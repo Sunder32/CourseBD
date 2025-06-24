@@ -330,14 +330,14 @@ BEGIN
 
   START TRANSACTION;
 
-    -- Шаг 1: Получаем пользователя
+    
     SELECT user_id INTO v_user_id
     FROM rentals WHERE rental_id = p_rental_id;
 
-    -- Шаг 2: Считаем стоимость поездки
+    
     SET v_cost = ROUND(p_distance * v_rate_km, 2);
 
-    -- Шаг 3: Обновляем аренду
+    
     UPDATE rentals
     SET
       end_time = NOW(),
@@ -346,24 +346,24 @@ BEGIN
       status   = 'completed'
     WHERE rental_id = p_rental_id;
 
-    -- Шаг 4: Освобождаем самокат
+    
     UPDATE scooters
     SET status = 'available'
     WHERE scooter_id = (
       SELECT scooter_id FROM rentals WHERE rental_id = p_rental_id
     );
 
-    -- Шаг 5: Обработка расчёта
+    
     IF v_cost <= v_deposit THEN
       SET v_diff = v_deposit - v_cost;
 
-      -- Возврат остатка
+      
       INSERT INTO payments(user_id, rental_id, type, amount, method)
       VALUES (v_user_id, p_rental_id, 'refund', v_diff, 'deposit_return');
     ELSE
       SET v_diff = v_cost - v_deposit;
 
-      -- Проверяем текущий баланс
+      
       SELECT balance INTO v_balance
       FROM users WHERE user_id = v_user_id;
 
@@ -371,12 +371,12 @@ BEGIN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Недостаточно средств для списания сверх залога';
       END IF;
 
-      -- Списание сверх залога
+      
       INSERT INTO payments(user_id, rental_id, type, amount, method)
       VALUES (v_user_id, p_rental_id, 'charge', v_diff, 'extra_charge');
     END IF;
 
-    -- Шаг 6: Проверка остатка на балансе
+    
     SELECT balance INTO v_balance
     FROM users WHERE user_id = v_user_id;
 
@@ -419,7 +419,7 @@ BEGIN
 
   START TRANSACTION;
 
-    -- Шаг 1: Проверка баланса
+    
     SELECT 'Шаг 1: Проверка баланса' AS step;
     SELECT SUM(
       CASE
@@ -436,7 +436,7 @@ BEGIN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Недостаточно средств для залога';
     END IF;
 
-    -- Шаг 2: Проверка заряда батареи
+    
     SELECT 'Шаг 2: Проверка батареи' AS step;
     SELECT battery_level INTO v_battery
     FROM scooters
@@ -448,7 +448,7 @@ BEGIN
       SIGNAL SQLSTATE '01000' SET MESSAGE_TEXT = 'Внимание: заряд ниже 20%';
     END IF;
 
-    -- Шаг 3: Обновление статуса самоката
+    
     SELECT 'Шаг 3: Обновление статуса самоката' AS step;
     UPDATE scooters
     SET status = 'rented'
@@ -458,12 +458,12 @@ BEGIN
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Самокат недоступен';
     END IF;
 
-    -- Шаг 4: Создание записи аренды
+    
     SELECT 'Шаг 4: Создание аренды' AS step;
     INSERT INTO rentals(user_id, scooter_id, start_time)
     VALUES (p_user_id, p_scooter_id, NOW());
 
-    -- Шаг 5: Списание залога
+    
     SELECT 'Шаг 5: Списание залога' AS step;
     INSERT INTO payments(user_id, rental_id, type, amount, method)
     VALUES (p_user_id, LAST_INSERT_ID(), 'charge', v_deposit, 'deposit');
@@ -564,4 +564,4 @@ DELIMITER ;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-06-25  0:12:11
+-- Dump completed on 2025-06-25  1:09:34
